@@ -73,8 +73,7 @@ Command switches are a list of strings.  Each entry is one switch."
 (defface matlab-shell-error-face
   (list
    (list t
-	 (list :background nil
-	       :foreground "red1"
+	 (list :foreground "red1"
 	       :bold t)))
   "*Face to use when errors occur in MATLAB shell."
   :group 'matlab-shell)
@@ -298,7 +297,7 @@ mode.")
 
     ;; Interrupt
     (define-key km [(control c) (control c)] 'matlab-shell-interrupt-subjob)
-    
+
     ;; Help system
     (define-key km [(control h) (control m)] matlab-help-map)
 
@@ -322,7 +321,7 @@ mode.")
 
     ;; matlab-shell actions
     (define-key km "\C-c/" 'matlab-shell-sync-buffer-directory)
-    
+
     km)
 
   "Keymap used in `matlab-shell-mode'.")
@@ -411,11 +410,11 @@ in a popup buffer.
        (format matlab-shell-history-file "R12"))
   (if (fboundp 'comint-read-input-ring)
       (comint-read-input-ring t))
-  
+
   ;;; MODE Settings
   (make-local-variable 'comment-start)
   (setq comment-start "%")
-  
+
   (use-local-map matlab-shell-mode-map)
   (set-syntax-table matlab-mode-syntax-table)
 
@@ -506,7 +505,7 @@ Try C-h f matlab-shell RET"))
 
   ;; If the shell isn't active yet, start it.
   (when (not (matlab-shell-active-p))
-    
+
     ;; Clean up crufty state
     (kill-all-local-variables)
 
@@ -516,7 +515,7 @@ Try C-h f matlab-shell RET"))
 	   (process-environment (cons newvar process-environment)))
       (apply #'make-comint matlab-shell-buffer-name matlab-shell-command
 	     nil matlab-shell-command-switches))
-  
+
     ;; Enable GUD
     (matlab-shell-gud-startup)
 
@@ -628,7 +627,7 @@ STRING is the recent output from PROC to be filtered."
 		  captext (substring matlab-shell-accumulator
 				     0 (match-end 0))
 		  matlab-shell-accumulator "")))
-      
+
       ;; No start capture, or an ended capture, everything goes back to String
       (setq string (concat string matlab-shell-accumulator)
 	    matlab-shell-accumulator ""
@@ -636,7 +635,7 @@ STRING is the recent output from PROC to be filtered."
 
     (with-current-buffer buff
       (mlgud-filter proc string))
-    
+
     ;; In case things get switched around on us
     (with-current-buffer buff
       (when matlab-shell-prompt-hook-cookie
@@ -710,12 +709,12 @@ Argument STR is the string to examine for version information."
 
     (message "Detected MATLAB %s (%s)  -- Loading history file" matlab-shell-running-matlab-release
 	     matlab-shell-running-matlab-version)
-  
+
     ;; Now get our history loaded
     (setq comint-input-ring-file-name
 	  (format matlab-shell-history-file matlab-shell-running-matlab-release)
 	  comint-input-history-ignore matlab-shell-history-ignore)
-	  
+
     (if (fboundp 'comint-read-input-ring)
 	(comint-read-input-ring t))
     ))
@@ -778,7 +777,7 @@ Argument STR is the text for the anchor."
 (defvar matlab-shell-error-anchor-expression
   (concat "^>?\\s-*\\(\\(Error \\(in\\|using\\)\\s-+\\|Syntax error in \\)\\(?:==> \\)?\\|"
           "In\\s-+\\(?:workspace belonging to\\s-+\\)?\\|Error:\\s-+File:\\s-+\\|Warning:\\s-+[^\n]+\n\\)")
-  
+
   "Expressions used to find errors in MATLAB process output.
 This variable contains the anchor, or starting text before
 a typical error.  See `matlab-shell-error-location-expression' for
@@ -791,7 +790,7 @@ after this anchor.")
    "\\(?:^> In\\s-+\\)?\\([-+>@.a-zA-Z_0-9/ \\\\:]+\\)\\s-+(line \\([0-9]+\\))"
 
    "\\([-+>@.a-zA-Z_0-9/ \\\\:]+\\)\\s-+Line:\\s-+\\([0-9]+\\)\\s-+Column:\\s-+\\([0-9]+\\)"
-   
+
    ;; Oldest I have examples for:
    (concat "\\([-+>@.a-zA-Z_0-9/ \\\\:]+\\)\\(?:>[^ ]+\\)?.*[\n ]"
 	   "\\(?:On\\|at\\)\\(?: line\\)? \\([0-9]+\\) ?")
@@ -812,7 +811,7 @@ Each expression should have the following match strings:
     (when ans
       (pulse-momentary-highlight-region (car ans) (car (cdr ans))))
     (message "Found: %S" ans)))
-    
+
 
 (defun matlab-shell-scan-for-error (limit)
   "Scan backward for a MATLAB error in the current buffer until LIMIT.
@@ -914,7 +913,7 @@ STR is provided by COMINT but is unused."
     (let ((start nil) (end nil)
 	  )
       (goto-char (point-max))
-      
+
       (while (re-search-backward (regexp-quote matlab-shell-errortext-end-text) nil t)
 	;; Start w/ end text to make sure everything is in the buffer already.
 
@@ -922,7 +921,7 @@ STR is provided by COMINT but is unused."
 	;; so move downward after this.
 	(if (not (re-search-backward (regexp-quote matlab-shell-errortext-start-text) nil t))
 	    (error "Mismatched error text tokens from MATLAB")
-	  
+
 	  ;; Save off where we start, and delete the indicator.
 	  (setq start (match-beginning 0))
 	  (delete-region start (match-end 0))
@@ -930,7 +929,7 @@ STR is provided by COMINT but is unused."
 	  ;; Find the end.
 	  (if (not (re-search-forward (regexp-quote matlab-shell-errortext-end-text) nil t))
 	      (error "Internal error scanning for error text tokens")
-	    
+
 	    (setq end (match-beginning 0))
 	    (delete-region end (match-end 0))
 
@@ -941,7 +940,7 @@ STR is provided by COMINT but is unused."
 	      (matlab-overlay-put o 'face 'matlab-shell-error-face)
 
 	      )))
-	    
+
 	;; Setup for next loop
 	(goto-char (point-max))))))
 
@@ -1005,7 +1004,7 @@ Sends commands to the MATLAB shell to initialize the MATLAB process."
 	     (cmd (format "run('%s');%s" initcmd (apply 'concat args))))
 	(matlab-shell-send-command cmd)
 	)
-    
+
     ;; Setup is misconfigured - we need emacsinit because it tells us how to debug
     (error "Unable to initialize matlab, emacsinit.m and other files missing"))
 
@@ -1022,7 +1021,7 @@ Sends commands to the MATLAB shell to initialize the MATLAB process."
   "Hook run on second prompt to run user specified startup functions."
   ;; Remove ourselves
   (remove-hook 'matlab-shell-prompt-appears-hook #'matlab-shell-user-startup-fcn)
-  
+
   ;; Run user's startup
   (matlab-shell-send-command (concat matlab-custom-startup-command ""))
 
@@ -1077,7 +1076,7 @@ and then processes it."
 
 	;; Generate the buffer and contents
 	(with-current-buffer (get-buffer-create buffname)
-	  
+
 	  (setq buffer-read-only nil)
 	  ;; Clear it if not appending.
 	  (erase-buffer)
@@ -1094,7 +1093,7 @@ and then processes it."
 	 (t
 	  (with-current-buffer showbuff
 	    (view-mode))))
-	
+
 	(display-buffer showbuff
 			'((display-buffer-use-some-window
 			   display-buffer-below-selected
@@ -1303,7 +1302,7 @@ No completions are provided anywhere else in the buffer."
       ;; last-cmd "! mv foo."
       (setq limit-pos (matlab-shell-get-completion-limit-pos last-cmd completions))
       (setq common-substr (substring last-cmd limit-pos))
-      
+
       ;; Mark the subfield of the completion result so we can say no completions
       ;; if there aren't any otherwise we need to remove it.
       (save-excursion
@@ -1544,10 +1543,10 @@ Returns a string path to the root of the executing MATLAB."
 	   )
       (set-buffer msbn)
       (goto-char (point-max))
-      
+
       (if matlab-shell-matlabroot-run
 	  matlab-shell-matlabroot-run
-	
+
 	;; If we haven't cached it, calculate it now.
 	(if (not (matlab-on-prompt-p))
 	    (error "MATLAB shell must be non-busy to do that"))
@@ -2096,7 +2095,7 @@ Similar to  `comint-send-input'."
 		   (file-name-nondirectory (buffer-file-name))))
 	 (msbn (concat "*" matlab-shell-buffer-name "*"))
 	 (do-local t))
-  
+
     (when matlab-shell-save-and-go-command
       ;; If an override command is set, run that instead of this file.
       (let* ((cmd matlab-shell-save-and-go-command)
@@ -2112,18 +2111,18 @@ Similar to  `comint-send-input'."
 	  ;; Else, use it.
 	  (setq do-local nil
 		matlab-shell-save-and-go-command-enabled t)
-	    
+
 	  ;; No buffer?  No net connection?  Make a shell!
 	  (if (and (not (get-buffer msbn)) (not (matlab-netshell-active-p)))
 	      (matlab-shell))
-	  
+
 	  (when (get-buffer msbn)
 	    ;; Ok, now fun the function in the matlab shell
 	    (if (get-buffer-window msbn t)
 		(select-window (get-buffer-window msbn t))
 	      (switch-to-buffer-other-window (concat "*" matlab-shell-buffer-name "*")))
 	    (goto-char (point-max)))
-	  
+
 	  (matlab-shell-send-command (concat cmd "\n"))
 	  )))
 
@@ -2165,7 +2164,7 @@ Similar to  `comint-send-input'."
 	   ("é" . "233")
 	   ("è" . "232")
 	   ("à" . "224")))
-    
+
 	;; change current directory? - only w/ matlab-shell active.
 	(if (and change-cd (get-buffer msbn))
 	    (progn
@@ -2174,10 +2173,10 @@ Similar to  `comint-send-input'."
 
 	      (let ((cmd (concat fn-name " " param)))
 		(matlab-shell-add-to-input-history cmd)
-	  
+
 		(matlab-shell-send-string (concat cmd "\n"))
 		))
-      
+
 	  ;; If not changing dir, maybe we need to use 'run' command instead?
 	  (let* ((match 0)
 		 (tmp (while (setq match (string-match "'" param match))
@@ -2280,7 +2279,7 @@ Picks between different options for running the commands.
 Optional argument NOSHOW specifies if we should echo the region to the command line."
   (cond
    ((eq matlab-shell-run-region-function 'auto)
-  
+
     (let ((cnt (count-lines beg end)))
 
       (if (< cnt 2)
@@ -2293,14 +2292,14 @@ Optional argument NOSHOW specifies if we should echo the region to the command l
 	    (progn
 	      (save-buffer)
 	      (matlab-shell-region->internal beg end noshow))
-	
+
 	  ;; No file, or older emacs, run region as tmp file.
 	  (matlab-shell-region->script beg end noshow)))
       ))
 
    (t
     (funcall matlab-shell-run-region-function beg end noshow))))
-   
+
 
 (defun matlab-shell-region->commandline (beg end &optional noshow)
   "Convert the region between BEG and END into a MATLAB command.
@@ -2395,11 +2394,11 @@ Return the name of the temporary file."
 
     ;; TODO : if the directory in which the current buffer is in is READ ONLY
     ;; we should write our tmp buffer to /tmp instead.
-    
+
     (with-current-buffer buff
 
       (goto-char (point-min))
-      
+
       ;; Clean up old extracted regions.
       (when (looking-at intro) (delete-region (point-min) (point-max)))
       ;; Don't stomp on old code.
@@ -2427,7 +2426,7 @@ Return the name of the temporary file."
 
       ;; Flush any pending MATLAB stuff.
       (accept-process-output)
-      
+
       ;; This sets us up to cleanup our file after it's done running.
       (add-hook 'matlab-shell-prompt-appears-hook `(lambda () (matlab-shell-cleanup-extracted-region ,(buffer-file-name buff))))
 

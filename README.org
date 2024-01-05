@@ -1,3 +1,5 @@
+Personnal Fork Goes with spacemacs config for lsp and tree-sitter
+
 * Matlab-emacs Project:
 
   MATLAB and Emacs integration:
@@ -30,12 +32,12 @@
 
    GNU emacs (sorry Xemacs folks) users (version >=24) can use the
    package as provided by MELPA.
-   Set 
+   Set
 
    #+BEGIN_SRC elisp
    (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
    #+END_SRC
-   And then run 
+   And then run
    M-x
    package-list-packages
 
@@ -147,4 +149,3 @@
    will open foo in the MATLAB editor for debugging.
 
 #+STARTUP: showall
-

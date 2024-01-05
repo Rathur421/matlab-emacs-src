@@ -29,7 +29,7 @@ function dl_emacs_support(varargin)
 %  all - All files
 %
 % DL_EMACS_SUPPORT(FILESET,DEST) - download FILESET and save in
-%   destination directory DEST 
+%   destination directory DEST
 %
 % For the most reliable refresh of the repository, run these two
 % commands, the frist will make sure the downloader is current.
@@ -44,21 +44,21 @@ function dl_emacs_support(varargin)
 % to compile.
 
     po = inputParser;
-    
+
     addOptional(po, 'fileset', 'all', @ischar)
     addOptional(po, 'destination', pwd, @ischar)
-    
+
     po.parse(varargin{:});
 
     stuff = po.Results;
-    
+
     if exist(stuff.destination,'dir') ~= 7
         error(['The folder: ''',stuff.destination, ''', does not exist.']);
     end
 
     downloader = { 'dl_emacs_support.m' };
-    
-    coreFiles = { 'matlab-load.el' 'matlab.el' 'mlint.el' ...
+
+    coreFiles = { 'matlab-load.el' 'matlab.el' ...
                   'matlab-publish.el' 'company-matlab-shell.el' ...
                   'linemark.el' ...
                   'toolbox/emacsinit.m' 'toolbox/opentoline.m' 'toolbox/emacsdocomplete.m' };
@@ -70,7 +70,7 @@ function dl_emacs_support(varargin)
                      'Project.ede'  'Makefile' ...
                      'toolbox/Project.ede' 'toolbox/Makefile' ...
                      'templates/Project.ede' 'templates/Makefile'};
-    
+
     switch stuff.fileset
       case 'dl'
         getfiles(downloader);
@@ -98,7 +98,7 @@ function dl_emacs_support(varargin)
         getfiles(supportFiles);
       otherwise
         error('Unknown fileset %s.', stuff.fileset);
-    end    
+    end
 
     function mktemplatedir
         templateDir = fullfile(stuff.destination,'templates');
@@ -106,7 +106,7 @@ function dl_emacs_support(varargin)
             mkdir(templateDir);
         end
     end
-    
+
     function mktoolboxdir
         toolboxDir = fullfile(stuff.destination,'toolbox');
         if ~exist(toolboxDir,'dir')
@@ -133,4 +133,3 @@ function dl_emacs_support(varargin)
         end
     end
 end
-

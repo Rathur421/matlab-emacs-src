@@ -29,14 +29,6 @@
 
 (require 'matlab-compat)
 
-;;; Code:
-(defvar matlab-syntax-support-command-dual t
-  "Non-nil means to support command dual for indenting and syntax highlight.
-Does not work well in classes with properties with datatypes.")
-(make-variable-buffer-local 'matlab-syntax-support-command-dual)
-(put 'matlab-syntax-support-command-dual 'safe-local-variable #'booleanp)
-
-
 (defvar matlab-syntax-table
   (let ((st (make-syntax-table (standard-syntax-table))))
     ;; Comment Handling:
@@ -55,10 +47,10 @@ Does not work well in classes with properties with datatypes.")
     ;;       These next syntaxes are handled with `matlab--syntax-propertize'
     ;;   Transpose:           varname'
     ;;   Quoted quotes:       ' don''t '    or " this "" "
-    ;;   Unterminated Char V: ' text 
+    ;;   Unterminated Char V: ' text
     (modify-syntax-entry ?'  "\"" st)
     (modify-syntax-entry ?\" "\"" st)
-    
+
     ;; Words and Symbols:
     (modify-syntax-entry ?_  "_" st)
 
@@ -83,7 +75,7 @@ Does not work well in classes with properties with datatypes.")
     (modify-syntax-entry ?\]  ")[" st)
     ;;(modify-syntax-entry ?{  "(}" st) - Handled as part of comments
     ;;(modify-syntax-entry ?}  "){" st)
-    
+
     st)
   "MATLAB syntax table")
 
@@ -169,16 +161,6 @@ and `matlab--scan-line-for-unterminated-string' for specific details."
       ;; Apply properties
       (while (and (not (>= (point) (or end (point-max)))) (not (eobp)))
 
-	(when matlab-syntax-support-command-dual
-	  ;; Commandl line dual comes first to prevent wasting time
-	  ;; in later checks.
-	  (beginning-of-line)
-	  (when (matlab--scan-line-for-command-dual)
-	    (matlab--put-char-category (point) 'matlab--command-dual-syntax)
-	    (end-of-line)
-	    (matlab--put-char-category (point) 'matlab--command-dual-syntax)
-	    ))
-	
 	;; Multiple ellipsis can be on a line.  Find them all
 	(beginning-of-line)
 	(while (matlab--scan-line-for-ellipsis)
@@ -367,118 +349,11 @@ Safe to use in `matlab-mode-hook'."
   (setq paragraph-separate paragraph-start)
   (make-local-variable 'paragraph-ignore-fill-prefix)
   (setq paragraph-ignore-fill-prefix t)
-  
+
   ;; Font lock
   (make-local-variable 'font-lock-syntactic-face-function)
   (setq font-lock-syntactic-face-function 'matlab--font-lock-syntactic-face)
   )
-
-;;; Syntax Testing for Strings and Comments
-;;
-;; These functions detect syntactic context based on the syntax table.
-(defsubst matlab-cursor-in-string-or-comment ()
-  "Return non-nil if the cursor is in a valid MATLAB comment or string."
-  (nth 8 (syntax-ppss (point))))
-
-(defsubst matlab-cursor-in-comment ()
-  "Return t if the cursor is in a valid MATLAB comment."
-  (nth 4 (syntax-ppss (point))))
-
-(defsubst matlab-cursor-in-string (&optional incomplete)
-  "Return t if the cursor is in a valid MATLAB character vector or string scalar.
-Note: INCOMPLETE is now obsolete
-If the optional argument INCOMPLETE is non-nil, then return t if we
-are in what could be a an incomplete string. (Note: this is also the default)"
-  (nth 3 (syntax-ppss (point))))
-
-(defun matlab-cursor-comment-string-context (&optional bounds-sym)
-  "Return the comment/string context of cursor for the current line.
-Return 'comment if in a comment.
-Return 'string if in a string.
-Return 'charvector if in a character vector
-Return 'ellipsis if after an ... ellipsis
-Return 'commanddual if in text interpreted as string for command dual
-Return nil if none of the above.
-Scans from the beginning of line to determine the context.
-If optional BOUNDS-SYM is specified, set that symbol value to the
-bounds of the string or comment the cursor is in"
-  (let* ((pps (syntax-ppss (point)))
-	 (start (nth 8 pps))
-	 (end 0)
-	 (syntax nil))
-    ;; Else, inside something if 'start' is set.
-    (when start
-      (save-match-data
-	(save-excursion
-	  (goto-char start) ;; Prep for extra checks.
-	  (setq syntax
-		(cond ((eq (nth 3 pps) t)
-		       (cond ((= (following-char) ?')
-			      'charvector)
-			     ((= (following-char) ?\")
-			      'string)
-			     (t
-			      'commanddual)))
-		      ((eq (nth 3 pps) ?')
-		       'charvector)
-		      ((eq (nth 3 pps) ?\")
-		       'string)
-		      ((nth 4 pps)
-		       (if (= (following-char) ?\%)
-			   'comment
-			 'ellipsis))
-		      (t nil)))
-	  
-	  ;; compute the bounds
-	  (when (and syntax bounds-sym)
-	    (if (memq syntax '(charvector string))
-		;;(forward-sexp 1) - overridden - need primitive version
-		(goto-char (scan-sexps (point) 1))
-	      (forward-comment 1)
-	      (if (bolp) (forward-char -1)))
-	    (set bounds-sym (list start (point))))
-	  )))
-
-    ;; Return the syntax
-    syntax))
-
-(defsubst matlab-beginning-of-string-or-comment (&optional all-comments)
-  "If the cursor is in a string or comment, move to the beginning.
-Returns non-nil if the cursor is in a comment."
-  (let* ((pps (syntax-ppss (point))))
-    (prog1
-	(when (nth 8 pps)
-	  (goto-char (nth 8 pps))
-	  
-	  t)
-      (when all-comments (forward-comment -100000)))))
-
-(defun matlab-end-of-string-or-comment (&optional all-comments)
-  "If the cursor is in a string or comment, move to the end.
-If optional ALL-COMMENTS is non-nil, then also move over all
-adjacent comments.
-Returns non-nil if the cursor moved."
-  (let* ((pps (syntax-ppss (point)))
-	 (start (point)))
-    (if (nth 8 pps)
-	(progn
-	  ;; syntax-ppss doesn't have the end, so go to the front
-	  ;; and then skip forward.
-	  (goto-char (nth 8 pps))
-	  (if (nth 3 pps)
-	      (goto-char (scan-sexps (point) 1))
-	    (forward-comment (if all-comments 100000 1)))
-	  ;; If the buffer is malformed, we might end up before starting pt.
-	  ;; so error.
-	  (when (< (point) start)
-	    (goto-char start)
-	    (error "Error navitaging syntax."))
-	  t)
-      ;; else not in comment, but still skip 'all-comments' if requested.
-      (when (and all-comments (looking-at "\\s-*\\s<"))
-	(forward-comment 100000)
-	t)
-      )))
 
 ;;; Navigating Lists
 ;;
@@ -540,7 +415,7 @@ Returns non-nil if the cursor moved."
   "Return non-nil if the current word is treated like a variable.
 This could mean it is:
   * Field of a structure
-  * Assigned from or into with =" 
+  * Assigned from or into with ="
   (or (save-excursion (skip-syntax-backward "w")
 		      (skip-syntax-backward " ")
 		      (or (= (preceding-char) ?\.)
@@ -553,20 +428,6 @@ This could mean it is:
   "Return non-nil if cursor is not in a string, comment, or parens."
   (let ((pps (syntax-ppss (point))))
     (not (or (nth 8 pps) (nth 9 pps))))) ;; 8 == string/comment, 9 == parens
-
-;;; Syntax Compat functions
-;;
-;; Left over old APIs.  Delete these someday.
-(defsubst matlab-move-simple-sexp-backward-internal (count)
-  "Move backward COUNT number of MATLAB sexps."
-  (let ((forward-sexp-function nil))
-    (forward-sexp (- count))))
-
-(defsubst matlab-move-simple-sexp-internal(count)
-  "Move over one MATLAB sexp COUNT times.
-If COUNT is negative, travel backward."
-  (let ((forward-sexp-function nil))
-    (forward-sexp count)))
 
 (provide 'matlab-syntax)
 

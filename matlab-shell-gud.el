@@ -630,9 +630,7 @@ LONGESTNAME specifies the how long the longest name we can expect is."
 (defface mlg-breakpoint-face
   (list
    (list t
-         (list :background nil
-               :foreground nil
-               :underline "red1")))
+         (list :underline "red1")))
   "*Face to use to highlight breakpoints."
   :group 'matlab-shell)
 
