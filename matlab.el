@@ -482,64 +482,6 @@ Ignored comments are lines that start with '% $$$'  or '%^'.")
        :slant italic))
   "*Face to use for cellbreak %% lines.")
 
-;;; Font Lock MLINT data highlighting
-
-;; TODO - THE BELOW LOOKS BROKEN TO ME.
-;;    - these are used in font lock, but are hand adding overlays
-;;    - and returning no matches - but the font lock keywords try to add
-;;    - a font.    NEEDS FIX
-(defun matlab-font-lock-nested-function-keyword-match (limit)
-  "Find next nested function/end keyword for font-lock.
-Argument LIMIT is the maximum distance to search."
-  ;; Because of the way overlays are setup, the cursor will be sitting
-  ;; on either a "function" or "end" keyword.
-  (catch 'result
-    (let ((pos (point))
-          overlays)
-      (while (< pos limit)
-        (setq overlays (matlab-overlays-at pos))
-        (while overlays
-          (let ((overlay (car overlays)))
-            (when (matlab-overlay-get overlay 'nested-function)
-              (when (= pos (matlab-overlay-start overlay))
-                (goto-char pos)
-                ;; The following line presumably returns true.
-                (throw 'result (re-search-forward "function" (+ pos 8) t)))
-              (let ((end-of-overlay (- (matlab-overlay-end overlay) 3)))
-                (when (<= pos end-of-overlay)
-                  (goto-char end-of-overlay)
-                  (throw 'result
-                         (re-search-forward "end" (+ end-of-overlay 3) t))))))
-          (setq overlays (cdr overlays)))
-        (setq pos (matlab-next-overlay-change pos)))
-      nil ;; no matches, stop
-      )))
-
-(defun matlab-font-lock-cross-function-variables-match (limit)
-  "Find next cross-function variable for font-lock.
-Argument LIMIT is the maximum distance to search."
-  (catch 'result
-    (let ((pos (point))
-          overlays variables)
-      (while (< pos limit)
-        (let ((overlays (matlab-overlays-at pos)))
-          (while overlays
-            (let ((overlay (car overlays)))
-              (setq variables (matlab-overlay-get
-                               overlay 'cross-function-variables))
-              (if variables
-                  (progn
-                    (goto-char pos)
-                    (setq pos (min limit (matlab-overlay-end overlay)))
-                    (if (re-search-forward variables pos t)
-                        (progn
-                          (throw 'result t))))))
-            (setq overlays (cdr overlays))))
-        (setq pos (matlab-next-overlay-change pos)))
-      nil ;; no matches, stop
-      )))
-
-
 (defcustom matlab-hg-primitives-list
   '(;; start with basic / primitive objects
     "figure" "axes" "line" "surface" "patch" "text" "light" "image" "imagesc"
@@ -613,36 +555,8 @@ Uses `regex-opt' if available.  Otherwise creates a 'dumb' expression."
           "\\)\\_>"))
 
 ;;; Font lock keyword handlers
-;;
-(defun matlab-font-lock-basic-keyword-match (limit)
-  "Font lock matcher for basic keywords.
-Fails to match when keywords show up as variables, etc."
-  (matlab--scan-next-keyword 'fl-simple limit))
-
-(defun matlab-font-lock-vardecl-keyword-match (limit)
-  "Font lock matcher for mcos keywords.
-Fails to match when keywords show up as variables, etc."
-  (matlab--scan-next-keyword 'vardecl limit))
-
-(defvar matlab-fl-anchor-keyword nil)
-(defun matlab-font-lock-mcos-keyword-match (limit)
-  "Font lock matcher for mcos keywords.
-Fails to match when keywords show up as variables, etc."
-  (when (and (eq matlab-functions-have-end 'class)
-             (setq matlab-fl-anchor-keyword
-                   (matlab--scan-next-keyword 'mcos limit)))
-    (save-match-data
-      ;; Skip over attributes.
-      (when (looking-at "\\s-*(") (forward-sexp 1)))
-    t))
-
-(defun matlab-font-lock-args-keyword-match (limit)
-  "Font lock matcher for mcos keywords.
-Fails to match when keywords show up as variables, etc."
-  (setq matlab-fl-anchor-keyword
-        (matlab--scan-next-keyword 'args limit)))
-
 (defvar font-lock-beg) (defvar font-lock-end) ; quiet compiler.
+
 (defun matlab-font-lock-extend-region ()
   "Called by font-lock to extend the region for multiline expressions.
 Supports expressions like arguments and property blocks with anchored
@@ -681,26 +595,6 @@ color support."
   "Clear the end limit for anchored matchers."
   (setq ml-fl-anchor-limit nil))
 
-(defun matlab-font-lock-anchor-variable-match (limit)
-  "After finding a keyword like PROPERTIES or ARGUMENTS, match vars.
-This matcher will handle a range of variable features."
-  (when (member (nth 1 matlab-fl-anchor-keyword)
-                '("properties" "events" "arguments"))
-    (let* ((match (re-search-forward "\\(?:^\\|[,;]\\)\\s-+\\(\\(?:\\w+\\|\\.\\)+\\)\\_>" ml-fl-anchor-limit t))
-           ;; Save this match so we can do a 2nd anchored search for a data type.
-           (md1 (list (match-beginning 1) (match-end 1)))
-           (tm (looking-at
-                "\\(\\(?:\\s-*([^\n\)]+)\\s-*\\|\\s-+\\)?\\(?:\\w+\\(?:\\.\\w+\\)*\\)?\\)\\s-*\\($\\|[;%{=]\\)"))
-           (tm1 (if tm (list (match-beginning 1) (match-end 1))
-                  ;; The below is a cheat to not highlight anything but
-                  ;; still supply the match data for this optional piece.
-                  (list (nth 1 md1) (nth 1 md1))))
-           (newmdata (append md1 md1 tm1)))
-      (when match
-        (goto-char (point-at-eol))
-        (set-match-data newmdata)
-        t))))
-
 ;;; Font Lock keyword handling
 ;;
 ;; Many parts of the keyword handling are shared with matlab-shell.
@@ -713,9 +607,6 @@ This matcher will handle a range of variable features."
 
 (defconst matlab-basic-font-lock-keywords
   (list
-   ;; General keywords
-   '(matlab-font-lock-basic-keyword-match
-     (0 font-lock-keyword-face))
    ;; Handle graphics stuff
    (list
     (matlab-font-lock-regexp-opt matlab-hg-primitives-list)
@@ -730,21 +621,7 @@ This matcher will handle a range of variable features."
   "Basic Expressions to highlight in MATLAB mode or shell.")
 
 (defconst matlab-file-basic-font-lock-keywords
-  (append
    matlab-basic-font-lock-keywords
-   '(;; MCOS keywords like properties, methods, events
-     (matlab-font-lock-mcos-keyword-match
-      (1 font-lock-keyword-face))
-     ;; ARGUMENTS keyword
-     (matlab-font-lock-args-keyword-match
-      (1 font-lock-keyword-face))
-     ;; Highlight cross function variables
-     (matlab-font-lock-cross-function-variables-match
-      (1 matlab-cross-function-variable-face prepend))
-     ;; Highlight nested function/end keywords
-     (matlab-font-lock-nested-function-keyword-match
-      (0 matlab-nested-function-keyword-face prepend))
-     ))
   "Basic Expressions to highlight in MATLAB Files.")
 
 (defconst matlab-fl-opt-continuation "\\s<\\S>+\\s>")
@@ -789,18 +666,6 @@ This matcher will handle a range of variable features."
                     (error (point-at-eol))))
                nil
                '(1 font-lock-variable-name-face)))
-   ;; ARGUMENTS have variables to highlight
-   '(matlab-font-lock-args-keyword-match
-     (matlab-font-lock-anchor-variable-match     ;; matcher fcn
-      (matlab-font-lock-anchor-set-end-limit)    ;; pre forms
-      (matlab-font-lock-anchor-clear-end-limit)  ;; post forms
-      (1 font-lock-variable-name-face t)
-      (2 font-lock-type-face t)
-      ))
-   ;; VARDECL keywords
-   '(matlab-font-lock-vardecl-keyword-match
-     ("\\(\\w+\\)\\(\\s-*=[^,; \t\n]+\\|[, \t;]+\\|$\\)"
-      nil  nil (1 font-lock-variable-name-face)))
    ;; I like variables for FOR loops
    '("\\<\\(\\(?:par\\)?for\\)\\s-+\\(\\sw+\\)\\s-*=\\s-*\
 \\(\\([^\n,;%(]+\\|([^\n%)]+)\\)+\\)"
@@ -841,15 +706,6 @@ This matcher will handle a range of variable features."
          '("\\(\\sw+\\)\\s-*\\(=\\s-*[^,)]+\\)?" nil  nil
            (1 font-lock-type-face)
            ))
-   ;; PROPERTY, EVENTS, etc have variables to highlight
-   '(matlab-font-lock-mcos-keyword-match
-     (matlab-font-lock-anchor-variable-match     ;; matcher fcn
-      (matlab-font-lock-anchor-set-end-limit)    ;; pre forms
-      (matlab-font-lock-anchor-clear-end-limit)  ;; post forms
-      (1 font-lock-variable-name-face t)
-      (2 font-lock-type-face t)
-      ))
-
    )
   "List of font-lock keywords used when an MATLAB file contains a class.")
 
