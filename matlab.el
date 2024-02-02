@@ -274,10 +274,6 @@ region."
     (define-key km [(control c) (control j)] 'matlab-justify-line)
     (define-key km [(control c) (control q)] 'matlab-fill-region)
     ;; Comment Stuff
-    (define-key km "%" 'matlab-electric-comment)
-    (define-key km "^" 'matlab-electric-comment)
-    (define-key km "}" 'matlab-electric-block-comment)
-    (define-key km "{" 'matlab-electric-block-comment)
     (define-key km "\C-c;" 'matlab-comment-region)
     (define-key km "\C-c:" 'matlab-uncomment-region)
     (define-key km [(meta \;)] 'matlab-comment)
@@ -884,7 +880,10 @@ All Key Bindings:
                    ())
       (indent-body . ;; if parent node is one of this and current node is in middle → indent
                    (class_definition
+                    arguments_statement
                     function_definition
+                    properties
+                    methods
                     for_statement
                     if_statement
                     switch_statement
@@ -906,7 +905,8 @@ All Key Bindings:
                        ;; that cannot be indented using AST, so best I leave it as-is"
                        ())
       (outdent . ;; these nodes always outdent (1 shift in opposite direction)
-               ()))
+               (elseif_clause
+                else_clause)))
     "Scopes for indenting in MATLAB"
     :type 'sexp)
 
