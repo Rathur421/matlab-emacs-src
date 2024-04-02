@@ -894,7 +894,8 @@ All Key Bindings:
                     (matrix
                      cell
                      strings
-                     arguments))
+                     arguments
+                     assignment))
       (align-char-to . ;; chaining char → node types we move parentwise to find the first chaining char
                      ())
       (aligned-siblings . ;; siblings (nodes with same parent) should be aligned to the first child
